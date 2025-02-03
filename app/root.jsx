@@ -15,6 +15,8 @@ import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import {PageLayout} from '~/components/PageLayout';
 import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
+import {FG_SHOP_DATA_QUERY} from './graphql/avada-free-gift/fgShopDataQuery';
+import useInitFG from './hooks/useInitFG';
 
 /**
  * This is important to avoid re-fetching root queries on sub-navigations
@@ -96,19 +98,42 @@ export async function loader(args) {
  * @param {LoaderFunctionArgs}
  */
 async function loadCriticalData({context}) {
-  const {storefront} = context;
+  const {
+    storefront,
+    env: {PUBLIC_STORE_DOMAIN: publicStoreDomain},
+  } = context;
 
-  const [header] = await Promise.all([
+  const [header, dataLocalization, resMetafield] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
         headerMenuHandle: 'main-menu', // Adjust to your header menu handle
       },
     }),
+    storefront.query(FG_SHOP_DATA_QUERY, {variables: {}}),
+    fetch(
+      `http://localhost:3000/client/headless/metafield?shopifyDomain=${publicStoreDomain}`,
+    ),
+
+    
     // Add other queries here, so that they are loaded in parallel
   ]);
+  const dataMetafield = await resMetafield.json();
 
-  return {header};
+  const {localization} = dataLocalization;
+  const countryCode = localization.language.isoCode;
+  const currencyCode = localization.country.currency.isoCode;
+  const locale = localization.language.isoCode;
+
+  return {
+    header,
+    dataMetafield: dataMetafield.data || {},
+    fgShopData: {
+      countryCode,
+      locale,
+      currencyCode,
+    },
+  };
 }
 
 /**
@@ -147,7 +172,7 @@ export function Layout({children}) {
   const nonce = useNonce();
   /** @type {RootLoader} */
   const data = useRouteLoaderData('root');
-
+  useInitFG(data);
   return (
     <html lang="en">
       <head>
