@@ -98,12 +98,9 @@ export async function loader(args) {
  * @param {LoaderFunctionArgs}
  */
 async function loadCriticalData({context}) {
-  const {
-    storefront,
-    env: {PUBLIC_STORE_DOMAIN: publicStoreDomain},
-  } = context;
+  const {storefront} = context;
 
-  const [header, dataLocalization, resMetafield] = await Promise.all([
+  const [header, fgApiData] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
@@ -111,23 +108,37 @@ async function loadCriticalData({context}) {
       },
     }),
     storefront.query(FG_SHOP_DATA_QUERY, {variables: {}}),
-    fetch(
-      `http://localhost:3000/client/headless/metafield?shopifyDomain=${publicStoreDomain}`,
-    ),
-
-    
     // Add other queries here, so that they are loaded in parallel
   ]);
-  const dataMetafield = await resMetafield.json();
-
-  const {localization} = dataLocalization;
+  const {shop, localization} = fgApiData;
   const countryCode = localization.language.isoCode;
   const currencyCode = localization.country.currency.isoCode;
   const locale = localization.language.isoCode;
+  const dataMetafield = {
+    giftCampaigns: JSON.parse(shop?.giftCampaigns?.value || '[]'),
+    configSettings: JSON.parse(shop?.configSettings?.value || '{}'),
+    congratsBarDesignSetting: JSON.parse(
+      shop?.congratsBarDesignSetting?.value || '{}',
+    ),
+    dealBadgeDesignSetting: JSON.parse(
+      shop?.dealBadgeDesignSetting?.value || '{}',
+    ),
+    promotionCardDesignSetting: JSON.parse(
+      shop?.promotionCardDesignSetting?.value || '{}',
+    ),
+    volumeDiscountDesignSetting: JSON.parse(
+      shop?.volumeDiscountDesignSetting?.value || '{}',
+    ),
+    dealOfTheDayDesignSetting: JSON.parse(
+      shop?.dealOfTheDayDesignSetting?.value || '{}',
+    ),
+    giftBoxDesignSetting: JSON.parse(shop?.giftBoxDesignSetting?.value || '{}'),
+    popUpDesignSetting: JSON.parse(shop?.popUpDesignSetting?.value || '{}'),
+  };
 
   return {
     header,
-    dataMetafield: dataMetafield.data || {},
+    dataMetafield,
     fgShopData: {
       countryCode,
       locale,

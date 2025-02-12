@@ -7,11 +7,10 @@ export default function useInitFG(data) {
     const initialize = async () => {
       try {
         const {dataMetafield, publicStoreDomain, fgShopData} = data;
-        const transformedDataMetafield = transformedObject(dataMetafield);
 
         window.AVADA_FREE_GIFTS = {
           ...(window.AVADA_FREE_GIFTS || {}),
-          ...transformedDataMetafield,
+          ...dataMetafield,
           isHeadless: true,
         };
 
@@ -36,14 +35,6 @@ export default function useInitFG(data) {
     initialize();
   }, []);
 }
-
-const transformedObject = (data) => {
-  return data.reduce((result, item) => {
-    const key = Object.keys(item)[0];
-    result[key] = item[key];
-    return result;
-  }, {});
-};
 
 function loadScript({id = null, url = null} = {}) {
   const hasScript = document.querySelector(`#${id}`);
