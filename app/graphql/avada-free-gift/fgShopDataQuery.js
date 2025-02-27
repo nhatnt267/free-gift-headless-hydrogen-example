@@ -39,6 +39,9 @@ query {
         }
         popUpDesignSetting: metafield(namespace: "avada_free_gifts", key: "popUpDesignSetting") {
             value
+        }, 
+        storeFrontAccessToken: metafield(namespace: "avada_free_gifts", key: "storeFrontAccessToken") {
+            value
         }
     }
 }

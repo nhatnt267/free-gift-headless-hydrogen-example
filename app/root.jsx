@@ -76,6 +76,7 @@ export async function loader(args) {
   return defer({
     ...deferredData,
     ...criticalData,
+    storeFrontAccessToken: env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
     shop: getShopAnalytics({
       storefront,

@@ -1,5 +1,7 @@
+import { Form } from '@remix-run/react';
 import {redirect} from '@shopify/remix-oxygen';
-
+import {json} from '@shopify/remix-oxygen';
+import { ShopifyCartClient } from 'aov-shopify-headless-cart-test';
 /**
  * Automatically creates a new cart based on the URL and redirects straight to checkout.
  * Expected URL structure:
@@ -20,6 +22,9 @@ import {redirect} from '@shopify/remix-oxygen';
  * @param {LoaderFunctionArgs}
  */
 export async function loader({request, context, params}) {
+  if (request.method !== 'GET') {
+    return json({ error: 'Method Not Allowed' }, { status: 405 });
+  }
   const {cart} = context;
   const {lines} = params;
   if (!lines) return redirect('/cart');
@@ -36,10 +41,10 @@ export async function loader({request, context, params}) {
 
   const url = new URL(request.url);
   const searchParams = new URLSearchParams(url.search);
+  console.log("🚀 ~ loader ~ searchParams:", searchParams)
 
   const discount = searchParams.get('discount');
   const discountArray = discount ? [discount] : [];
-
   // create a cart
   const result = await cart.create({
     lines: linesMap,
@@ -65,9 +70,42 @@ export async function loader({request, context, params}) {
   }
 }
 
+export async function action({request, context, params}) {
+  try {
+    
+    const {env, cart} = context;
+    const {lines} = params;
+    if (!lines) return json({error: 'Lines are required'}, {status: 400});
+    const body = await request.json();
+    console.log("🚀 ~ action ~ body:", body)
+    const cartData = await cart.get();
+    const cartClient = new ShopifyCartClient({
+      config: {
+        storeDomain: env.PUBLIC_STORE_DOMAIN,
+        accessToken: env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
+        cartId: cartData.id,
+      },
+    });
+    switch (lines) {
+      case 'add.js':
+        const {items} = body
+       const cart = await cartClient.addToCart(items)
+       console.log("🚀 ~ action ~ cart:", cart)
+      
+        return json({success: true}, {status: 200});
+      default:
+        return json({error: 'Invalid action'}, {status: 400});
+    }
+  } catch (error) {
+    console.error('Cart API Error:', error);
+    return json({error: 'Internal Server Error'}, {status: 500});
+  }
+}
+
 export default function Component() {
   return null;
 }
+
 
 /** @typedef {import('@shopify/remix-oxygen').LoaderFunctionArgs} LoaderFunctionArgs */
 /** @typedef {import('@shopify/remix-oxygen').SerializeFrom<typeof loader>} LoaderReturnData */
