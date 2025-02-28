@@ -11,7 +11,8 @@ import {
 import {ProductPrice} from '~/components/ProductPrice';
 import {ProductImage} from '~/components/ProductImage';
 import {ProductForm} from '~/components/ProductForm';
-
+import {useEffect} from 'react';
+import formatProduct from '~/helper/formatProduct';
 /**
  * @type {MetaFunction<typeof loader>}
  */
@@ -90,6 +91,23 @@ export default function Product() {
     getAdjacentAndFirstAvailableVariants(product),
   );
 
+  useEffect(() => {
+    try {
+      window.AVADA_FREE_GIFTS = {
+        ...(window.AVADA_FREE_GIFTS || {}),
+        product: formatProduct(product),
+      };
+
+      return () => {
+        window.AVADA_FREE_GIFTS = {
+          ...window.AVADA_FREE_GIFTS,
+          product: {},
+        };
+      };
+    } catch (error) {
+      console.error('error', error);
+    }
+  }, [product]);
   // Sets the search param to the selected variant without navigation
   // only when no search params are set in the url
   useSelectedOptionInUrlParam(selectedVariant.selectedOptions);
@@ -217,6 +235,16 @@ const PRODUCT_FRAGMENT = `#graphql
     seo {
       description
       title
+    }
+    collections(first: 50) {
+      edges {
+        node {
+          id
+          title
+          handle
+          
+        }
+      }
     }
   }
   ${PRODUCT_VARIANT_FRAGMENT}

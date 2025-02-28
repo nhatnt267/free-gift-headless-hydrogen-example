@@ -15,6 +15,8 @@ import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import {PageLayout} from '~/components/PageLayout';
 import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
+import {FG_SHOP_DATA_QUERY} from './graphql/avada-free-gift/fgShopDataQuery';
+import useInitFG from './hooks/useInitFG';
 
 /**
  * This is important to avoid re-fetching root queries on sub-navigations
@@ -74,6 +76,7 @@ export async function loader(args) {
   return defer({
     ...deferredData,
     ...criticalData,
+    storeFrontAccessToken: env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
     shop: getShopAnalytics({
       storefront,
@@ -98,17 +101,51 @@ export async function loader(args) {
 async function loadCriticalData({context}) {
   const {storefront} = context;
 
-  const [header] = await Promise.all([
+  const [header, fgApiData] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
         headerMenuHandle: 'main-menu', // Adjust to your header menu handle
       },
     }),
+    storefront.query(FG_SHOP_DATA_QUERY, {variables: {}}),
     // Add other queries here, so that they are loaded in parallel
   ]);
+  const {shop, localization} = fgApiData;
+  const countryCode = localization.language.isoCode;
+  const currencyCode = localization.country.currency.isoCode;
+  const locale = localization.language.isoCode;
+  const dataMetafield = {
+    giftCampaigns: JSON.parse(shop?.giftCampaigns?.value || '[]'),
+    configSettings: JSON.parse(shop?.configSettings?.value || '{}'),
+    congratsBarDesignSetting: JSON.parse(
+      shop?.congratsBarDesignSetting?.value || '{}',
+    ),
+    dealBadgeDesignSetting: JSON.parse(
+      shop?.dealBadgeDesignSetting?.value || '{}',
+    ),
+    promotionCardDesignSetting: JSON.parse(
+      shop?.promotionCardDesignSetting?.value || '{}',
+    ),
+    volumeDiscountDesignSetting: JSON.parse(
+      shop?.volumeDiscountDesignSetting?.value || '{}',
+    ),
+    dealOfTheDayDesignSetting: JSON.parse(
+      shop?.dealOfTheDayDesignSetting?.value || '{}',
+    ),
+    giftBoxDesignSetting: JSON.parse(shop?.giftBoxDesignSetting?.value || '{}'),
+    popUpDesignSetting: JSON.parse(shop?.popUpDesignSetting?.value || '{}'),
+  };
 
-  return {header};
+  return {
+    header,
+    dataMetafield,
+    fgShopData: {
+      countryCode,
+      locale,
+      currencyCode,
+    },
+  };
 }
 
 /**
@@ -147,7 +184,7 @@ export function Layout({children}) {
   const nonce = useNonce();
   /** @type {RootLoader} */
   const data = useRouteLoaderData('root');
-
+  useInitFG(data);
   return (
     <html lang="en">
       <head>
