@@ -1,7 +1,6 @@
-import { Form } from '@remix-run/react';
 import {redirect} from '@shopify/remix-oxygen';
 import {json} from '@shopify/remix-oxygen';
-import { ShopifyCartClient } from 'aov-shopify-headless-cart-test';
+import {ShopifyCartClient} from 'aov-shopify-headless-cart-test';
 /**
  * Automatically creates a new cart based on the URL and redirects straight to checkout.
  * Expected URL structure:
@@ -23,10 +22,14 @@ import { ShopifyCartClient } from 'aov-shopify-headless-cart-test';
  */
 export async function loader({request, context, params}) {
   if (request.method !== 'GET') {
-    return json({ error: 'Method Not Allowed' }, { status: 405 });
+    return json({error: 'Method Not Allowed'}, {status: 405});
   }
   const {cart} = context;
   const {lines} = params;
+
+  if (lines === 'add.js' || lines === 'update.js' || lines === 'change.js') {
+    return json({success: true}, {status: 200});
+  }
   if (!lines) return redirect('/cart');
   const linesMap = lines.split(',').map((line) => {
     const lineDetails = line.split(':');
@@ -41,8 +44,6 @@ export async function loader({request, context, params}) {
 
   const url = new URL(request.url);
   const searchParams = new URLSearchParams(url.search);
-  console.log("🚀 ~ loader ~ searchParams:", searchParams)
-
   const discount = searchParams.get('discount');
   const discountArray = discount ? [discount] : [];
   // create a cart
@@ -72,12 +73,10 @@ export async function loader({request, context, params}) {
 
 export async function action({request, context, params}) {
   try {
-    
     const {env, cart} = context;
     const {lines} = params;
     if (!lines) return json({error: 'Lines are required'}, {status: 400});
     const body = await request.json();
-    console.log("🚀 ~ action ~ body:", body)
     const cartData = await cart.get();
     const cartClient = new ShopifyCartClient({
       config: {
@@ -88,11 +87,19 @@ export async function action({request, context, params}) {
     });
     switch (lines) {
       case 'add.js':
-        const {items} = body
-       const cart = await cartClient.addToCart(items)
-       console.log("🚀 ~ action ~ cart:", cart)
-      
+        const {items = []} = body;
+        await cartClient.addToCart(items);
         return json({success: true}, {status: 200});
+
+      case 'update.js':
+        const {updates = {}} = body;
+        await cartClient.updateCartItemsForLineId(updates);
+        return json({success: true}, {status: 200});
+
+      case 'change.js':
+        await cartClient.changeCartItem({...body});
+        return json({success: true}, {status: 200});
+
       default:
         return json({error: 'Invalid action'}, {status: 400});
     }
@@ -105,7 +112,6 @@ export async function action({request, context, params}) {
 export default function Component() {
   return null;
 }
-
 
 /** @typedef {import('@shopify/remix-oxygen').LoaderFunctionArgs} LoaderFunctionArgs */
 /** @typedef {import('@shopify/remix-oxygen').SerializeFrom<typeof loader>} LoaderReturnData */

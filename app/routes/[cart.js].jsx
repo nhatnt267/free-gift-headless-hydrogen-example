@@ -9,7 +9,7 @@ export const loader = async ({request, context}) => {
     config: {
       storeDomain: env.PUBLIC_STORE_DOMAIN,
       accessToken: env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
-      cartId: cartData.id,
+      cartId: cartData?.id,
     },
   });
 
